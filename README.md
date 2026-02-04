@@ -1,1 +1,3 @@
-# engo-551-lab1
+# Project 1
+
+ENGO 551
