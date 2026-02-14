@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Error</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+  <div class="nav">
+    <a href="{{ url_for('index') }}">Search</a>
+    <a href="{{ url_for('login') }}">Login</a>
+    <a href="{{ url_for('register') }}">Register</a>
+  </div>
+
+  <h2>Error</h2>
+
+  <div class="card">
+    {{ error }}
+  </div>
+
+</body>
+</html>

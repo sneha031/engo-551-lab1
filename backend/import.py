@@ -1,6 +1,7 @@
 import os
 import csv
-from sqlalchemy import create_engine
+
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 if not os.getenv("DATABASE_URL"):
@@ -14,8 +15,11 @@ def main():
         reader = csv.DictReader(f)
         for row in reader:
             db.execute(
-                "INSERT INTO books (isbn, title, author, year) VALUES (:isbn, :title, :author, :year) "
-                "ON CONFLICT (isbn) DO NOTHING",
+                text(
+                    "INSERT INTO books (isbn, title, author, year) "
+                    "VALUES (:isbn, :title, :author, :year) "
+                    "ON CONFLICT (isbn) DO NOTHING"
+                ),
                 {
                     "isbn": row["isbn"].strip(),
                     "title": row["title"].strip(),
@@ -24,7 +28,7 @@ def main():
                 }
             )
     db.commit()
-    print("Imported books.csv into books table")
+    print("Import complete")
 
 if __name__ == "__main__":
     main()

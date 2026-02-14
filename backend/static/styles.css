@@ -1,0 +1,49 @@
+body {
+  font-family: Arial, sans-serif;
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 0 15px;
+  line-height: 1.4;
+}
+
+.nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.card {
+  border: 1px solid #ddd;
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 6px;
+}
+
+input, textarea, select, button {
+  padding: 8px;
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+input, textarea, select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+button { cursor: pointer; width: auto; }
+
+.msg {
+  padding: 10px;
+  border: 1px solid #f2c2c2;
+  background: #fff2f2;
+  border-radius: 6px;
+  margin: 12px 0;
+}
+
+.small { color: #555; font-size: 13px; }
+.stars { letter-spacing: 1px; }

@@ -1,8 +1,9 @@
 import os
+import requests
 
-from flask import Flask, session, request, redirect, url_for
+from flask import Flask, session, request, redirect, url_for, render_template, jsonify
 from flask_session import Session
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -18,29 +19,27 @@ Session(app)
 engine = create_engine(os.getenv("DATABASE_URL"))
 db = scoped_session(sessionmaker(bind=engine))
 
-def page(title, body):
-    return f"""
-    <html>
-    <head><meta charset="utf-8"><title>{title}</title></head>
-    <body style="font-family: Arial; max-width: 800px; margin: 30px auto;">
-      <div style="margin-bottom: 15px;">
-        {nav()}
-      </div>
-      {body}
-    </body>
-    </html>
-    """
-
-def nav():
-    if session.get("user_id"):
-        u = session.get("username", "")
-        return f'Logged in as <b>{u}</b> | <a href="{url_for("index")}">Search</a> | <a href="{url_for("logout")}">Logout</a>'
-    return f'<a href="{url_for("login")}">Login</a> | <a href="{url_for("register")}">Register</a>'
-
 def require_login():
     if not session.get("user_id"):
         return redirect(url_for("login"))
     return None
+
+def google_books(isbn):
+    try:
+        r = requests.get(f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}", timeout=5)
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        items = data.get("items", [])
+        if not items:
+            return None
+        info = items[0].get("volumeInfo", {})
+        return {
+            "averageRating": info.get("averageRating"),
+            "ratingsCount": info.get("ratingsCount")
+        }
+    except Exception:
+        return None
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -51,105 +50,77 @@ def index():
     if request.method == "POST":
         q = (request.form.get("q") or "").strip()
         if not q:
-            return page("Search", "<h2>Search</h2><p>Please type something.</p>" + search_form())
+            return render_template("search.html", message="Type something to search")
 
         like = f"%{q}%"
         books = db.execute(
-            "SELECT isbn, title, author, year FROM books "
-            "WHERE isbn ILIKE :like OR title ILIKE :like OR author ILIKE :like "
-            "ORDER BY title LIMIT 50",
+            text(
+                "SELECT isbn, title, author, year FROM books "
+                "WHERE isbn ILIKE :like OR title ILIKE :like OR author ILIKE :like "
+                "ORDER BY title LIMIT 50"
+            ),
             {"like": like}
         ).fetchall()
 
         if not books:
-            return page("Results", f"<h2>Results</h2><p>No matches for <b>{q}</b>.</p>" + search_form())
+            return render_template("search.html", q=q, books=[], message="No matches found")
 
-        items = ""
-        for b in books:
-            items += f'<li><a href="{url_for("book_page", isbn=b.isbn)}">{b.title}</a> by {b.author} ({b.year}) — {b.isbn}</li>'
+        return render_template("search.html", q=q, books=books)
 
-        return page("Results", f"<h2>Results for “{q}”</h2><ul>{items}</ul>" + search_form())
-
-    return page("Search", "<h2>Search Books</h2>" + search_form())
-
-def search_form():
-    return f"""
-    <form method="post">
-      <input name="q" placeholder="ISBN, title, or author" style="width: 70%; padding: 8px;">
-      <button type="submit" style="padding: 8px 12px;">Search</button>
-    </form>
-    """
+    return render_template("search.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
+    if request.method == "GET":
+        return render_template("register.html")
 
-        if not username or not password:
-            return page("Register", "<h2>Register</h2><p>Username and password are required.</p>" + register_form())
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
 
-        existing = db.execute(
-            "SELECT id FROM users WHERE username = :u",
-            {"u": username}
-        ).fetchone()
+    if not username or not password:
+        return render_template("register.html", message="Username and password required")
 
-        if existing:
-            return page("Register", "<h2>Register</h2><p>That username is already taken.</p>" + register_form())
+    existing = db.execute(
+        text("SELECT id FROM users WHERE username = :u"),
+        {"u": username}
+    ).fetchone()
 
-        pw_hash = generate_password_hash(password)
-        user_id = db.execute(
-            "INSERT INTO users (username, password_hash) VALUES (:u, :p) RETURNING id",
-            {"u": username, "p": pw_hash}
-        ).fetchone()[0]
-        db.commit()
+    if existing:
+        return render_template("register.html", message="Username already taken")
 
-        session["user_id"] = user_id
-        session["username"] = username
-        return redirect(url_for("index"))
+    pw_hash = generate_password_hash(password)
 
-    return page("Register", "<h2>Register</h2>" + register_form())
+    user_id = db.execute(
+        text("INSERT INTO users (username, password_hash) VALUES (:u, :p) RETURNING id"),
+        {"u": username, "p": pw_hash}
+    ).fetchone()[0]
 
-def register_form():
-    return f"""
-    <form method="post">
-      <div style="margin: 8px 0;">Username<br><input name="username" style="width: 60%; padding: 8px;"></div>
-      <div style="margin: 8px 0;">Password<br><input name="password" type="password" style="width: 60%; padding: 8px;"></div>
-      <button type="submit" style="padding: 8px 12px;">Create account</button>
-    </form>
-    """
+    db.commit()
+
+    session["user_id"] = user_id
+    session["username"] = username
+    return redirect(url_for("index"))
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
         session.clear()
+        return render_template("login.html")
 
-    if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
 
-        user = db.execute(
-            "SELECT id, username, password_hash FROM users WHERE username = :u",
-            {"u": username}
-        ).fetchone()
+    user = db.execute(
+        text("SELECT id, username, password_hash FROM users WHERE username = :u"),
+        {"u": username}
+    ).fetchone()
 
-        if not user or not check_password_hash(user.password_hash, password):
-            return page("Login", "<h2>Login</h2><p>Invalid username or password.</p>" + login_form())
+    if not user or not check_password_hash(user.password_hash, password):
+        return render_template("login.html", message="Invalid username or password")
 
-        session["user_id"] = user.id
-        session["username"] = user.username
-        return redirect(url_for("index"))
-
-    return page("Login", "<h2>Login</h2>" + login_form())
-
-def login_form():
-    return f"""
-    <form method="post">
-      <div style="margin: 8px 0;">Username<br><input name="username" style="width: 60%; padding: 8px;"></div>
-      <div style="margin: 8px 0;">Password<br><input name="password" type="password" style="width: 60%; padding: 8px;"></div>
-      <button type="submit" style="padding: 8px 12px;">Login</button>
-    </form>
-    """
+    session["user_id"] = user.id
+    session["username"] = user.username
+    return redirect(url_for("index"))
 
 @app.route("/logout")
 def logout():
@@ -162,13 +133,13 @@ def book_page(isbn):
     if gate:
         return gate
 
-    book_row = db.execute(
-        "SELECT isbn, title, author, year FROM books WHERE isbn = :isbn",
+    book = db.execute(
+        text("SELECT isbn, title, author, year FROM books WHERE isbn = :isbn"),
         {"isbn": isbn}
     ).fetchone()
 
-    if not book_row:
-        return page("Book", "<h2>Book not found</h2><p>That ISBN does not exist in the database.</p>")
+    if not book:
+        return render_template("error.html", error="Book not found")
 
     if request.method == "POST":
         rating_raw = request.form.get("rating")
@@ -180,89 +151,106 @@ def book_page(isbn):
             rating = 0
 
         if rating < 1 or rating > 5 or not review_text:
-            return render_book_page(book_row, "Please enter 1–5 stars and a comment.")
+            reviews = db.execute(
+                text(
+                    "SELECT u.username, r.rating, r.review_text, r.created_at "
+                    "FROM reviews r JOIN users u ON r.user_id = u.id "
+                    "WHERE r.isbn = :isbn ORDER BY r.created_at DESC"
+                ),
+                {"isbn": isbn}
+            ).fetchall()
+
+            stats = db.execute(
+                text(
+                    "SELECT COUNT(*) AS count, COALESCE(AVG(rating), 0) AS avg "
+                    "FROM reviews WHERE isbn = :isbn"
+                ),
+                {"isbn": isbn}
+            ).fetchone()
+
+            return render_template(
+                "book.html",
+                book=book,
+                reviews=reviews,
+                stats=stats,
+                message="Please select 1–5 stars and write a comment."
+            )
 
         existing = db.execute(
-            "SELECT id FROM reviews WHERE user_id = :uid AND isbn = :isbn",
+            text("SELECT id FROM reviews WHERE user_id = :uid AND isbn = :isbn"),
             {"uid": session["user_id"], "isbn": isbn}
         ).fetchone()
 
         if existing:
             db.execute(
-                "UPDATE reviews SET rating = :r, review_text = :t, created_at = NOW() "
-                "WHERE user_id = :uid AND isbn = :isbn",
+                text(
+                    "UPDATE reviews SET rating = :r, review_text = :t, created_at = NOW() "
+                    "WHERE user_id = :uid AND isbn = :isbn"
+                ),
                 {"r": rating, "t": review_text, "uid": session["user_id"], "isbn": isbn}
             )
         else:
             db.execute(
-                "INSERT INTO reviews (user_id, isbn, rating, review_text) VALUES (:uid, :isbn, :r, :t)",
+                text(
+                    "INSERT INTO reviews (user_id, isbn, rating, review_text) "
+                    "VALUES (:uid, :isbn, :r, :t)"
+                ),
                 {"uid": session["user_id"], "isbn": isbn, "r": rating, "t": review_text}
             )
 
         db.commit()
         return redirect(url_for("book_page", isbn=isbn))
 
-    return render_book_page(book_row, None)
-
-def render_book_page(book_row, message):
-    isbn = book_row.isbn
-
     reviews = db.execute(
-        "SELECT r.rating, r.review_text, r.created_at, u.username "
-        "FROM reviews r JOIN users u ON r.user_id = u.id "
-        "WHERE r.isbn = :isbn "
-        "ORDER BY r.created_at DESC",
+        text(
+            "SELECT u.username, r.rating, r.review_text, r.created_at "
+            "FROM reviews r JOIN users u ON r.user_id = u.id "
+            "WHERE r.isbn = :isbn ORDER BY r.created_at DESC"
+        ),
         {"isbn": isbn}
     ).fetchall()
 
     stats = db.execute(
-        "SELECT COUNT(*) AS count, COALESCE(AVG(rating), 0) AS avg "
-        "FROM reviews WHERE isbn = :isbn",
+        text(
+            "SELECT COUNT(*) AS count, COALESCE(AVG(rating), 0) AS avg "
+            "FROM reviews WHERE isbn = :isbn"
+        ),
         {"isbn": isbn}
     ).fetchone()
 
-    msg_html = f"<p style='color: red;'>{message}</p>" if message else ""
+    ginfo = google_books(isbn)
 
-    review_list = ""
-    if reviews:
-        for r in reviews:
-            stars = "★" * int(r.rating) + "☆" * (5 - int(r.rating))
-            review_list += f"<div style='padding: 10px; border: 1px solid #ddd; margin: 10px 0;'>" \
-                           f"<div><b>{r.username}</b> | {stars}</div>" \
-                           f"<div style='margin-top: 6px;'>{escape_html(r.review_text)}</div>" \
-                           f"</div>"
-    else:
-        review_list = "<p>No reviews yet.</p>"
+    message = None
+    if ginfo and (ginfo.get("averageRating") is not None or ginfo.get("ratingsCount") is not None):
+        ar = ginfo.get("averageRating")
+        rc = ginfo.get("ratingsCount")
+        message = f"Google Books: average rating {ar}, ratings count {rc}"
 
-    avg = float(stats.avg)
-    count = int(stats.count)
+    return render_template("book.html", book=book, reviews=reviews, stats=stats, message=message)
 
-    body = f"""
-    <h2>{escape_html(book_row.title)}</h2>
-    <p><b>Author:</b> {escape_html(book_row.author)}<br>
-       <b>Year:</b> {book_row.year}<br>
-       <b>ISBN:</b> {book_row.isbn}</p>
+@app.route("/api/<string:isbn>")
+def api(isbn):
+    book = db.execute(
+        text("SELECT isbn, title, author, year FROM books WHERE isbn = :isbn"),
+        {"isbn": isbn}
+    ).fetchone()
 
-    <p><b>Class reviews:</b> {count} review(s), average {avg:.2f}/5</p>
+    if not book:
+        return jsonify({"error": "Book not found"}), 404
 
-    <h3>Leave a review</h3>
-    {msg_html}
-    <form method="post">
-      <div style="margin: 8px 0;">
-        Stars (1 to 5)<br>
-        <input name="rating" style="width: 120px; padding: 8px;" placeholder="1-5">
-      </div>
-      <div style="margin: 8px 0;">
-        Comment<br>
-        <textarea name="review_text" rows="4" style="width: 90%; padding: 8px;" placeholder="Write your review..."></textarea>
-      </div>
-      <button type="submit" style="padding: 8px 12px;">Submit</button>
-    </form>
+    stats = db.execute(
+        text(
+            "SELECT COUNT(*) AS count, COALESCE(AVG(rating), 0) AS avg "
+            "FROM reviews WHERE isbn = :isbn"
+        ),
+        {"isbn": isbn}
+    ).fetchone()
 
-    <h3>Other reviews</h3>
-    {review_list}
-    """
-    return page("Book", body)
-
-def escape_html(s):
-    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return jsonify({
+        "isbn": book.isbn,
+        "title": book.title,
+        "author": book.author,
+        "year": book.year,
+        "review_count": int(stats.count),
+        "average_score": float(stats.avg)
+    })
