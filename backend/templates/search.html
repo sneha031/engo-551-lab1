@@ -7,52 +7,57 @@
 </head>
 <body>
 
-  <div class="nav">
-    {% if session.get("user_id") %}
-      <div>Logged in as <b>{{ session.get("username") }}</b></div>
-      <div>|</div>
-      <a href="{{ url_for('index') }}">Search</a>
-      <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('register') }}">Register</a>
-    {% endif %}
-  </div>
-
-  {% if message %}
-    <div class="msg">{{ message }}</div>
-  {% endif %}
-
-  <h2>Search Books</h2>
-
-  <form method="post" action="{{ url_for('index') }}">
-    <div class="card">
-      <div class="small">Search by ISBN, title, or author (partial matches work)</div>
-      <input name="q" placeholder="e.g. Asimov, Robot, 038079...">
-      <div style="margin-top:12px;">
-        <button type="submit">Search</button>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        Logged in as <b>{{ session.get("username") }}</b>
+      </div>
+      <div class="topbar-right">
+        <a href="{{ url_for('index') }}">Search</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
       </div>
     </div>
-  </form>
+  </div>
 
-  {% if q %}
-    <h3>Results for "{{ q }}"</h3>
-  {% endif %}
+  <div class="page">
+    {% if message %}
+      <div class="msg">{{ message }}</div>
+    {% endif %}
 
-  {% if books %}
-    <div class="card">
-      <ul>
-        {% for b in books %}
-          <li>
-            <a href="{{ url_for('book_page', isbn=b.isbn) }}">{{ b.title }}</a>
-            <span class="small">by {{ b.author }} ({{ b.year }}) — {{ b.isbn }}</span>
-          </li>
-        {% endfor %}
-      </ul>
+    <div class="panel">
+      <div class="panel-title">Search Books</div>
+
+      <form method="post" action="{{ url_for('index') }}">
+        <div class="small">Search by ISBN, title, or author (partial matches work)</div>
+        <div style="margin-top:10px;">
+          <input name="q" placeholder="e.g. Asimov, Robot, 038079..." value="{{ q if q else '' }}">
+        </div>
+        <div style="margin-top:12px;">
+          <button type="submit">Search</button>
+        </div>
+      </form>
     </div>
-  {% elif q %}
-    <div class="card">No matches found.</div>
-  {% endif %}
+
+    {% if q %}
+      <div class="panel">
+        <div class="panel-title">Results for "{{ q }}"</div>
+
+        {% if books %}
+          <ul>
+            {% for b in books %}
+              <li>
+                <a href="{{ url_for('book_page', isbn=b.isbn) }}">{{ b.title }}</a>
+                <span class="small"> — {{ b.author }} ({{ b.year }}) — {{ b.isbn }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div>No matches found.</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </div>
 
 </body>
 </html>

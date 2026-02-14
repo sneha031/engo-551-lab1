@@ -7,96 +7,113 @@
 </head>
 <body>
 
-  <div class="nav">
-    {% if session.get("user_id") %}
-      <div>Logged in as <b>{{ session.get("username") }}</b></div>
-      <div>|</div>
-      <a href="{{ url_for('index') }}">Search</a>
-      <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('register') }}">Register</a>
-    {% endif %}
-  </div>
-
-  {% if message %}
-    <div class="msg">{{ message }}</div>
-  {% endif %}
-
-  <h2>{{ book.title }}</h2>
-
-  <div class="card">
-    <div><b>Author:</b> {{ book.author }}</div>
-    <div><b>Year:</b> {{ book.year }}</div>
-    <div><b>ISBN:</b> {{ book.isbn }}</div>
-
-    {% if stats %}
-      <div style="margin-top:10px;">
-        <b>Class reviews:</b> {{ stats.count }} review(s), average {{ "%.2f"|format(stats.avg) }}/5
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        Logged in as <b>{{ session.get("username") }}</b>
       </div>
-    {% endif %}
-
-    <div style="margin-top:10px;">
-  <b>Google Books:</b>
-  {% if ginfo %}
-    average {{ ginfo.avg if ginfo.avg is not none else "N/A" }},
-    ratings {{ ginfo.count if ginfo.count is not none else "N/A" }}
-    {% if ginfo.link %}
-      - <a href="{{ ginfo.link }}" target="_blank">Open on Google Books</a>
-    {% endif %}
-    {% if ginfo.thumb %}
-      <div style="margin-top:8px;">
-        <img src="{{ ginfo.thumb }}" alt="Cover">
-      </div>
-    {% endif %}
-  {% else %}
-    Not available
-  {% endif %}
-</div>
-
-  <h3>Leave a review</h3>
-  <form method="post" action="{{ url_for('book_page', isbn=book.isbn) }}">
-    <div class="card">
-      <div class="small">Stars (1–5)</div>
-      <select name="rating">
-        <option value="">Select...</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-      </select>
-
-      <div style="margin-top:10px;" class="small">Comment</div>
-      <textarea name="review_text" rows="4" placeholder="Write your review..."></textarea>
-
-      <div style="margin-top:12px;">
-        <button type="submit">Submit review</button>
+      <div class="topbar-right">
+        <a href="{{ url_for('index') }}">Search</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
       </div>
     </div>
-  </form>
+  </div>
 
-  <h3>Other reviews</h3>
+  <div class="page">
 
-  {% if reviews and reviews|length > 0 %}
-    {% for r in reviews %}
-      <div class="card">
-        <div>
-          <b>{{ r.username }}</b>
-          <span class="small">| {{ r.created_at }}</span>
+    {% if message %}
+      <div class="msg">{{ message }}</div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-title">{{ book.title }}</div>
+
+      <div><b>Author:</b> {{ book.author }}</div>
+      <div><b>Year:</b> {{ book.year }}</div>
+      <div><b>ISBN:</b> {{ book.isbn }}</div>
+
+      {% if stats %}
+        <div style="margin-top:10px;">
+          <b>Class reviews:</b> {{ stats.count }} review(s), average {{ "%.2f"|format(stats.avg) }}/5
         </div>
+      {% endif %}
 
-        <div class="stars" style="margin-top:6px;">
-          {% for _ in range(r.rating) %}★{% endfor %}
-          {% for _ in range(5 - r.rating) %}☆{% endfor %}
-        </div>
-
-        <div style="margin-top:8px;">{{ r.review_text }}</div>
+      <div style="margin-top:10px;">
+        <b>Google Books:</b>
+        {% if ginfo %}
+          average {{ ginfo.avg if ginfo.avg is not none else "N/A" }},
+          ratings {{ ginfo.count if ginfo.count is not none else "N/A" }}
+          {% if ginfo.link %}
+            - <a href="{{ ginfo.link }}" target="_blank">Open on Google Books</a>
+          {% endif %}
+          {% if ginfo.thumb %}
+            <div style="margin-top:10px;">
+              <img src="{{ ginfo.thumb }}" alt="Cover" style="max-width:160px; border-radius:10px;">
+            </div>
+          {% endif %}
+        {% else %}
+          Not available
+        {% endif %}
       </div>
-    {% endfor %}
-  {% else %}
-    <div class="card">No reviews yet.</div>
-  {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Leave a review</div>
+
+      <form method="post" action="{{ url_for('book_page', isbn=book.isbn) }}">
+        <div class="small">Stars (1–5)</div>
+        <div style="margin-top:8px;">
+          <select name="rating">
+            <option value="">Select...</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+
+        <div style="margin-top:12px;" class="small">Comment</div>
+        <div style="margin-top:8px;">
+          <textarea name="review_text" rows="4" placeholder="Write your review..."></textarea>
+        </div>
+
+        <div style="margin-top:12px;">
+          <button type="submit">Submit review</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Other reviews</div>
+
+      {% if reviews and reviews|length > 0 %}
+        {% for r in reviews %}
+          <div style="margin-bottom:14px;">
+            <div>
+              <b>{{ r.username }}</b>
+              <span class="small"> | {{ r.created_at }}</span>
+            </div>
+
+            <div class="stars" style="margin-top:6px;">
+              {% for _ in range(r.rating) %}★{% endfor %}
+              {% for _ in range(5 - r.rating) %}☆{% endfor %}
+            </div>
+
+            <div style="margin-top:8px;">{{ r.review_text }}</div>
+          </div>
+
+          {% if not loop.last %}
+            <hr style="border:none; border-top:1px solid rgba(0,0,0,0.10); margin:16px 0;">
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div>No reviews yet.</div>
+      {% endif %}
+    </div>
+
+  </div>
 
 </body>
 </html>
+

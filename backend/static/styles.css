@@ -1,49 +1,144 @@
+
+html, body {
+  height: 100%;
+}
+
 body {
-  font-family: Arial, sans-serif;
-  max-width: 900px;
-  margin: 30px auto;
-  padding: 0 15px;
-  line-height: 1.4;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  background: url("/static/img/background.jpg") no-repeat center center fixed;
+  background-size: cover;
+  position: relative;
 }
 
-.nav {
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(253, 230, 238, 0.18);
+  z-index: 0;
+  pointer-events: none; 
+}
+
+
+.page {
+  position: relative;
+  z-index: 1;
+  padding: 28px 18px 60px;
+}
+
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(253, 230, 238, 0.92);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  backdrop-filter: blur(6px);
+}
+
+.topbar-inner {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 12px 18px;
   display: flex;
-  gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-a { text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-.card {
-  border: 1px solid #ddd;
-  padding: 12px;
-  margin: 12px 0;
-  border-radius: 6px;
-}
-
-input, textarea, select, button {
-  padding: 8px;
-  margin-top: 6px;
+.topbar-left {
   font-size: 14px;
+  color: #5a2c3a;
 }
 
-input, textarea, select {
+.topbar-right a {
+  color: #6b2a3d;
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 16px;
+}
+
+.topbar-right a:hover {
+  text-decoration: underline;
+}
+
+.center-wrap {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.panel {
+  width: min(820px, 92vw);
+  margin: 22px auto;
+  padding: 18px 18px 20px;
+  background: rgba(253, 230, 238, 0.65);
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.10);
+}
+
+.panel-title {
+  text-align: center;
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #3f1f2a;
+}
+
+.small {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+
+input, select, textarea {
   width: 100%;
   box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.16);
+  outline: none;
+  background: rgba(255,255,255,0.92);
 }
 
-button { cursor: pointer; width: auto; }
+textarea { resize: vertical; }
+
+button {
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.16);
+  background: rgba(255,255,255,0.92);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  background: rgba(255,255,255,1);
+}
+
+
+ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+li { margin: 10px 0; }
+
+a {
+  color: #6b2a3d;
+}
 
 .msg {
-  padding: 10px;
-  border: 1px solid #f2c2c2;
-  background: #fff2f2;
-  border-radius: 6px;
-  margin: 12px 0;
+  width: min(820px, 92vw);
+  margin: 14px auto 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(0,0,0,0.10);
 }
 
-.small { color: #555; font-size: 13px; }
-.stars { letter-spacing: 1px; }
+.stars {
+  font-size: 18px;
+  letter-spacing: 1px;
+}
