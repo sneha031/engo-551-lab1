@@ -32,11 +32,27 @@
 
     {% if stats %}
       <div style="margin-top:10px;">
-        <b>Class reviews:</b> {{ stats.count }} review(s),
-        average {{ "%.2f"|format(stats.avg) }}/5
+        <b>Class reviews:</b> {{ stats.count }} review(s), average {{ "%.2f"|format(stats.avg) }}/5
       </div>
     {% endif %}
-  </div>
+
+    <div style="margin-top:10px;">
+  <b>Google Books:</b>
+  {% if ginfo %}
+    average {{ ginfo.avg if ginfo.avg is not none else "N/A" }},
+    ratings {{ ginfo.count if ginfo.count is not none else "N/A" }}
+    {% if ginfo.link %}
+      - <a href="{{ ginfo.link }}" target="_blank">Open on Google Books</a>
+    {% endif %}
+    {% if ginfo.thumb %}
+      <div style="margin-top:8px;">
+        <img src="{{ ginfo.thumb }}" alt="Cover">
+      </div>
+    {% endif %}
+  {% else %}
+    Not available
+  {% endif %}
+</div>
 
   <h3>Leave a review</h3>
   <form method="post" action="{{ url_for('book_page', isbn=book.isbn) }}">

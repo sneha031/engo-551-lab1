@@ -19,27 +19,39 @@ Session(app)
 engine = create_engine(os.getenv("DATABASE_URL"))
 db = scoped_session(sessionmaker(bind=engine))
 
+
 def require_login():
     if not session.get("user_id"):
         return redirect(url_for("login"))
     return None
 
-def google_books(isbn):
+
+def google_books_info(isbn):
     try:
         r = requests.get(f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}", timeout=5)
         if r.status_code != 200:
             return None
         data = r.json()
         items = data.get("items", [])
-        if not items:
-            return None
-        info = items[0].get("volumeInfo", {})
-        return {
-            "averageRating": info.get("averageRating"),
-            "ratingsCount": info.get("ratingsCount")
-        }
+
+        for it in items:
+            info = it.get("volumeInfo", {})
+            avg = info.get("averageRating")
+            count = info.get("ratingsCount")
+            link = info.get("infoLink") or info.get("previewLink")
+
+            thumb = None
+            imgs = info.get("imageLinks")
+            if imgs:
+                thumb = imgs.get("thumbnail")
+
+            if avg is not None or count is not None or link or thumb:
+                return {"avg": avg, "count": count, "link": link, "thumb": thumb}
+
+        return None
     except Exception:
         return None
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -68,6 +80,7 @@ def index():
         return render_template("search.html", q=q, books=books)
 
     return render_template("search.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -101,6 +114,7 @@ def register():
     session["username"] = username
     return redirect(url_for("index"))
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
@@ -122,10 +136,12 @@ def login():
     session["username"] = user.username
     return redirect(url_for("index"))
 
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
 
 @app.route("/book/<string:isbn>", methods=["GET", "POST"])
 def book_page(isbn):
@@ -140,6 +156,10 @@ def book_page(isbn):
 
     if not book:
         return render_template("error.html", error="Book not found")
+
+    ginfo = google_books_info(isbn)
+    gb_avg = ginfo["avg"] if ginfo else None
+    gb_count = ginfo["count"] if ginfo else None
 
     if request.method == "POST":
         rating_raw = request.form.get("rating")
@@ -173,6 +193,9 @@ def book_page(isbn):
                 book=book,
                 reviews=reviews,
                 stats=stats,
+                gb_avg=gb_avg,
+                gb_count=gb_count,
+                ginfo=ginfo,
                 message="Please select 1–5 stars and write a comment."
             )
 
@@ -218,15 +241,16 @@ def book_page(isbn):
         {"isbn": isbn}
     ).fetchone()
 
-    ginfo = google_books(isbn)
+    return render_template(
+        "book.html",
+        book=book,
+        reviews=reviews,
+        stats=stats,
+        gb_avg=gb_avg,
+        gb_count=gb_count,
+        ginfo=ginfo
+    )
 
-    message = None
-    if ginfo and (ginfo.get("averageRating") is not None or ginfo.get("ratingsCount") is not None):
-        ar = ginfo.get("averageRating")
-        rc = ginfo.get("ratingsCount")
-        message = f"Google Books: average rating {ar}, ratings count {rc}"
-
-    return render_template("book.html", book=book, reviews=reviews, stats=stats, message=message)
 
 @app.route("/api/<string:isbn>")
 def api(isbn):
@@ -246,11 +270,21 @@ def api(isbn):
         {"isbn": isbn}
     ).fetchone()
 
+    ginfo = google_books_info(isbn)
+    gb_avg = ginfo["avg"] if ginfo else None
+    gb_count = ginfo["count"] if ginfo else None
+    gb_link = ginfo["link"] if ginfo else None
+    gb_thumb = ginfo["thumb"] if ginfo else None
+
     return jsonify({
         "isbn": book.isbn,
         "title": book.title,
         "author": book.author,
         "year": book.year,
         "review_count": int(stats.count),
-        "average_score": float(stats.avg)
+        "average_score": float(stats.avg),
+        "google_average_rating": gb_avg,
+        "google_ratings_count": gb_count,
+        "google_link": gb_link,
+        "google_thumbnail": gb_thumb
     })
