@@ -288,3 +288,6 @@ def api(isbn):
         "google_link": gb_link,
         "google_thumbnail": gb_thumb
     })
+
+
+print(app.url_map)
