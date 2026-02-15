@@ -7,30 +7,40 @@
 </head>
 <body>
 
-  <div class="nav">
-    <a href="{{ url_for('login') }}">Login</a>
-    <a href="{{ url_for('register') }}">Register</a>
-  </div>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        <a href="{{ url_for('login') }}">Login</a>
+        <span class="divider">|</span>
+        <a href="{{ url_for('register') }}">Register</a>
+      </div>
 
-  {% if message %}
-    <div class="msg">{{ message }}</div>
-  {% endif %}
-
-  <h2>Register</h2>
-
-  <form method="post" action="{{ url_for('register') }}">
-    <div class="card">
-      <div class="small">Username</div>
-      <input name="username" autocomplete="username">
-
-      <div style="margin-top:10px;" class="small">Password</div>
-      <input name="password" type="password" autocomplete="new-password">
-
-      <div style="margin-top:12px;">
-        <button type="submit">Create account</button>
+      <div class="topbar-right">
       </div>
     </div>
-  </form>
+  </div>
+
+  <div class="page">
+    <div class="panel">
+      <div class="panel-title">Register</div>
+
+      <form method="post" action="{{ url_for('register') }}">
+        <div class="small">Username</div>
+        <div style="margin-top:8px;">
+          <input name="username" autocomplete="username" required>
+        </div>
+
+        <div class="small" style="margin-top:12px;">Password</div>
+        <div style="margin-top:8px;">
+          <input name="password" type="password" autocomplete="new-password" required>
+        </div>
+
+        <div style="margin-top:14px;">
+          <button type="submit">Create account</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
 </body>
 </html>
